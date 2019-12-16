@@ -40,8 +40,7 @@ form_data_t parse_img_body(const string &content_type, const string &body) {
     std::string be = bs + "--";
 
     boost::regex type_regex{"^Content-Type: image/(jpeg|jpg|png)"};
-    boost::regex pos_regex{"^Content-Disposition: form-data; name=\"(.+)\"; filename=\"(.+)\"$"};
-
+    boost::regex pos_regex{"^Content-Disposition: form-data; name=\"(.+)\"; filename=\"(.+)\"[;]{0,1}.*"};
     for (string::const_iterator it=body.begin(); it!=body.end(); ++it) {
         if (*it == '\n') {
 
@@ -55,20 +54,22 @@ form_data_t parse_img_body(const string &content_type, const string &body) {
 
             boost::smatch res;
 
-            if (status == 1 && boost::regex_search(content, res, pos_regex)) {
-                form.field = res[1];
-                form.file = res[2];
-                start = it+1;
-                status = 2;
-                continue;
-            }
-
-            if (status == 2 && content.size() > 0) {
+            if (status == 1) {
+                if (boost::regex_search(content, res, pos_regex)) {
+                    form.field = res[1];
+                    form.file = res[2];
+                    status = 2;
+                }
                 start = it + 1;
                 continue;
             }
 
-            if (status == 2 && content.size() == 0) {
+            if (status == 2 && !content.empty()) {
+                start = it + 1;
+                continue;
+            }
+
+            if (status == 2 && content.empty()) {
                 status = 3;
                 start = it + 1;
                 content_start = it + 1;
@@ -87,4 +88,4 @@ form_data_t parse_img_body(const string &content_type, const string &body) {
     return form;
 }
 
-#endif //LACR_CLOUD_ACR_CROW_BODY_H
+#endif
